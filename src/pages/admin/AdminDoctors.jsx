@@ -116,6 +116,7 @@ export default function AdminDoctors() {
     const [patientCounts, setPatientCounts] = useState({});
     const [showAdd, setShowAdd] = useState(false);
     const [createdDoctor, setCreatedDoctor] = useState(null);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         const q = query(collection(db, 'users'), where('role', '==', 'doctor'));
@@ -142,6 +143,11 @@ export default function AdminDoctors() {
         setCreatedDoctor(doctor);
     }
 
+    const filtered = doctors.filter(d => {
+        const q = search.toLowerCase();
+        return !q || d.name?.toLowerCase().includes(q) || d.email?.toLowerCase().includes(q) || d.specialization?.toLowerCase().includes(q);
+    });
+
     return (
         <AdminLayout>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -150,6 +156,14 @@ export default function AdminDoctors() {
                     <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>{doctors.length} registered</p>
                 </div>
                 <button className="btn btn-accent" onClick={() => setShowAdd(true)}>+ Add Doctor</button>
+            </div>
+
+            {/* Search */}
+            <div style={{ position: 'relative', marginBottom: '1.2rem', maxWidth: 400 }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>🔍</span>
+                <input className="form-input" style={{ paddingLeft: 36 }}
+                    type="text" placeholder="Search doctors by name, email, specialization..."
+                    value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
             <div className="card">
@@ -163,10 +177,12 @@ export default function AdminDoctors() {
                             </tr>
                         </thead>
                         <tbody>
-                            {doctors.length === 0 && (
-                                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No doctors registered yet</td></tr>
+                            {filtered.length === 0 && (
+                                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                    {search ? 'No doctors match your search.' : 'No doctors registered yet.'}
+                                </td></tr>
                             )}
-                            {doctors.map(doc => (
+                            {filtered.map(doc => (
                                 <tr key={doc.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--primary)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

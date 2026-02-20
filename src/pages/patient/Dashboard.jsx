@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
@@ -11,6 +11,8 @@ export default function PatientDashboard() {
     const [notifications, setNotifications] = useState([]);
     const [latestLog, setLatestLog] = useState(null);
     const [visitCount, setVisitCount] = useState(0);
+    const [assignedDoctor, setAssignedDoctor] = useState(null);
+    const [nextVisit, setNextVisit] = useState(null); // { date, doctorName }
 
     // Real-time notifications
     useEffect(() => {
@@ -44,6 +46,34 @@ export default function PatientDashboard() {
         return onSnapshot(q, snap => setVisitCount(snap.size));
     }, [currentUser]);
 
+    // Assigned doctor + next follow-up visit
+    useEffect(() => {
+        if (!userData?.assignedDoctorId) return;
+        // fetch assigned doctor
+        getDoc(doc(db, 'users', userData.assignedDoctorId)).then(snap => {
+            if (snap.exists()) setAssignedDoctor({ id: snap.id, ...snap.data() });
+        });
+        // fetch next upcoming follow-up from medicalVisits
+        const today = new Date().toISOString().split('T')[0];
+        getDocs(query(
+            collection(db, 'medicalVisits'),
+            where('patientId', '==', currentUser.uid)
+        )).then(snap => {
+            const upcoming = snap.docs
+                .map(d => ({ ...d.data() }))
+                .flatMap(v => {
+                    const dates = (v.followUpInstructions || []).map(fi => {
+                        const m = fi.match(/\d{4}-\d{2}-\d{2}/);
+                        return m ? { date: m[0], doctorName: v.doctorName } : null;
+                    }).filter(Boolean);
+                    return dates;
+                })
+                .filter(v => v.date >= today)
+                .sort((a, b) => a.date.localeCompare(b.date));
+            setNextVisit(upcoming[0] || null);
+        });
+    }, [currentUser, userData]);
+
     function timeAgo(ts) {
         if (!ts?.toDate) return null;
         const diff = (Date.now() - ts.toDate().getTime()) / 60000;
@@ -65,7 +95,17 @@ export default function PatientDashboard() {
                 <div className="announcement-banner" style={{ marginBottom: '1.5rem' }}>
                     <span style={{ fontSize: '1.2rem' }}>📅</span>
                     <div style={{ flex: 1 }}>
-                        <strong>Upcoming Appointment:</strong> February 22, 2026 at 10:00 AM — Dr. Priya Sharma, Apollo Hospitals OPD
+                        {nextVisit ? (
+                            <><strong>Upcoming Appointment:</strong>{' '}
+                                {new Date(nextVisit.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                {nextVisit.doctorName && ` — Dr. ${nextVisit.doctorName}`}
+                                {assignedDoctor?.hospital && `, ${assignedDoctor.hospital}`}
+                            </>
+                        ) : assignedDoctor ? (
+                            <><strong>Your Doctor:</strong>{' '}Dr. {assignedDoctor.name} · {assignedDoctor.specialization || 'General Medicine'} · {assignedDoctor.hospital || 'Apollo Hospitals'}</>
+                        ) : (
+                            <><strong>No upcoming appointment</strong> — log your symptoms to keep your doctor updated 📝</>
+                        )}
                     </div>
                     <button className="btn btn-sm btn-outline" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }} onClick={() => navigate('/patient/log')}>
                         Message Doctor
