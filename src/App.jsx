@@ -16,14 +16,26 @@ import PatientTrends from './pages/patient/Trends';
 import DoctorPatients from './pages/doctor/DoctorPatients';
 import DoctorPatientDetail from './pages/doctor/DoctorPatientDetail';
 
+// Admin Pages
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminDoctors from './pages/admin/AdminDoctors';
+import AdminPatients from './pages/admin/AdminPatients';
+import AdminAssignments from './pages/admin/AdminAssignments';
+
 // Shared
 import Footer from './components/Footer';
+
+const ROLE_HOME = {
+  patient: '/patient/dashboard',
+  doctor: '/doctor/patients',
+  admin: '/admin/dashboard',
+};
 
 function PrivateRoute({ children, requiredRole }) {
   const { currentUser, userRole } = useAuth();
   if (!currentUser) return <Navigate to="/" replace />;
   if (requiredRole && userRole !== requiredRole) {
-    return <Navigate to={userRole === 'patient' ? '/patient/dashboard' : '/doctor/patients'} replace />;
+    return <Navigate to={ROLE_HOME[userRole] || '/'} replace />;
   }
   return children;
 }
@@ -46,7 +58,7 @@ function AppRoutes() {
         path="/"
         element={
           currentUser
-            ? <Navigate to={userRole === 'patient' ? '/patient/dashboard' : '/doctor/patients'} replace />
+            ? <Navigate to={ROLE_HOME[userRole] || '/patient/dashboard'} replace />
             : <Login />
         }
       />
@@ -61,6 +73,12 @@ function AppRoutes() {
       {/* Doctor Routes */}
       <Route path="/doctor/patients" element={<PrivateRoute requiredRole="doctor"><DoctorPatients /></PrivateRoute>} />
       <Route path="/doctor/patient/:patientId" element={<PrivateRoute requiredRole="doctor"><DoctorPatientDetail /></PrivateRoute>} />
+
+      {/* Admin Routes */}
+      <Route path="/admin/dashboard" element={<PrivateRoute requiredRole="admin"><AdminDashboard /></PrivateRoute>} />
+      <Route path="/admin/doctors" element={<PrivateRoute requiredRole="admin"><AdminDoctors /></PrivateRoute>} />
+      <Route path="/admin/patients" element={<PrivateRoute requiredRole="admin"><AdminPatients /></PrivateRoute>} />
+      <Route path="/admin/assignments" element={<PrivateRoute requiredRole="admin"><AdminAssignments /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

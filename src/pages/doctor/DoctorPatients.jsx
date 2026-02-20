@@ -4,7 +4,6 @@ import { collection, query, getDocs, onSnapshot, where } from 'firebase/firestor
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
-import AddPatientModal from '../../components/AddPatientModal';
 import PrescriptionModal from '../../components/PrescriptionModal';
 
 export default function DoctorPatients() {
@@ -15,7 +14,6 @@ export default function DoctorPatients() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [unreadMap, setUnreadMap] = useState({});
-    const [showAddModal, setShowAddModal] = useState(false);
     const [prescriptionFor, setPrescriptionFor] = useState(null); // { id, name }
     const [aiAlertMap, setAiAlertMap] = useState({}); // patientId -> urgencyLevel
 
@@ -59,14 +57,6 @@ export default function DoctorPatients() {
         });
     }, [currentUser]);
 
-    function handlePatientCreated(patient) {
-        if (patient?.openPrescription) {
-            // Close add modal, open prescription modal for the new patient
-            setShowAddModal(false);
-            setPrescriptionFor({ id: patient.id, name: patient.name });
-            patient.onClose?.();
-        }
-    }
 
     const riskColors = { critical: '#e53e3e', high: '#dd6b20', medium: '#d69e2e', low: '#38a169' };
     const filtered = patients.filter(p => {
@@ -87,13 +77,6 @@ export default function DoctorPatients() {
                         <h1>My Patients</h1>
                         <p>{patients.length} active patients · sorted by risk level{patients.filter(p => p.risk === 'critical').length > 0 ? ` · ${patients.filter(p => p.risk === 'critical').length} critical` : ''}</p>
                     </div>
-                    <button
-                        className="btn btn-accent"
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.9rem', padding: '10px 20px' }}
-                        onClick={() => setShowAddModal(true)}
-                    >
-                        <span style={{ fontSize: '1.1rem', fontWeight: 900 }}>+</span> Add Patient
-                    </button>
                 </div>
 
                 {/* Search + Filter */}
@@ -127,9 +110,18 @@ export default function DoctorPatients() {
 
                 {/* Patient Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {filtered.length === 0 && (
+                    {patients.length === 0 && (
                         <div className="card">
                             <div className="card-body" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>👥</div>
+                                <strong>No patients assigned yet.</strong>
+                                <p style={{ marginTop: 8, fontSize: '0.85rem' }}>Contact your administrator to assign patients to you.</p>
+                            </div>
+                        </div>
+                    )}
+                    {patients.length > 0 && filtered.length === 0 && (
+                        <div className="card">
+                            <div className="card-body" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                 🔍 No patients found matching your criteria.
                             </div>
                         </div>
@@ -183,12 +175,6 @@ export default function DoctorPatients() {
                 </div>
             </div>
 
-            {showAddModal && (
-                <AddPatientModal
-                    onClose={() => setShowAddModal(false)}
-                    onPatientCreated={handlePatientCreated}
-                />
-            )}
 
             {prescriptionFor && (
                 <PrescriptionModal
