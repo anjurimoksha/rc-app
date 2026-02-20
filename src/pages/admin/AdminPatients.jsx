@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { createPortal } from 'react-dom';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from './AdminLayout';
@@ -7,6 +8,18 @@ import toast from 'react-hot-toast';
 
 const RISK_COLORS = { critical: 'var(--danger)', high: '#dd6b20', medium: '#d69e2e', low: 'var(--success)' };
 
+/* ── Field lives at module scope so React never recreates it ── */
+function Field({ label, value, onChange, type = 'text', placeholder = '', required = true }) {
+    return (
+        <div className="form-group">
+            <label className="form-label">{label}{required ? ' *' : ''}</label>
+            <input className="form-input" type={type} placeholder={placeholder}
+                value={value} onChange={onChange} required={required} />
+        </div>
+    );
+}
+
+/* ── Modal via Portal — completely isolated from parent re-renders ── */
 function AddPatientModal({ doctors, onClose, onSuccess }) {
     const { adminCreateUser } = useAuth();
     const [form, setForm] = useState({
@@ -24,14 +37,14 @@ function AddPatientModal({ doctors, onClose, onSuccess }) {
         if (form.password.length < 6) { toast.error('Password must be at least 6 characters.'); return; }
         setSaving(true);
         try {
-            const { uid } = await adminCreateUser(form.email, form.password, {
+            await adminCreateUser(form.email, form.password, {
                 name: form.name, role: 'patient',
                 age: form.age, gender: form.gender, phone: form.phone,
                 condition: form.condition, admissionDate: form.admissionDate,
                 riskLevel: form.riskLevel, assignedDoctorId: form.assignedDoctorId || null,
             });
             toast.success(`Patient ${form.name} registered!`);
-            onSuccess({ uid, ...form });
+            onSuccess({ ...form });
         } catch (err) {
             toast.error(err.message || 'Failed to register patient.');
         } finally {
@@ -39,15 +52,7 @@ function AddPatientModal({ doctors, onClose, onSuccess }) {
         }
     }
 
-    const F = ({ label, k, type = 'text', placeholder = '', required = true }) => (
-        <div className="form-group">
-            <label className="form-label">{label}{required ? ' *' : ''}</label>
-            <input className="form-input" type={type} placeholder={placeholder}
-                value={form[k]} onChange={e => set(k, e.target.value)} required={required} />
-        </div>
-    );
-
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
             <div className="modal" style={{ maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
                 <div className="modal-header">
@@ -55,10 +60,10 @@ function AddPatientModal({ doctors, onClose, onSuccess }) {
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
                 <div className="modal-body">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} autoComplete="off">
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <F label="Full Name" k="name" placeholder="Sneha Rao" />
-                            <F label="Age" k="age" type="number" placeholder="34" />
+                            <Field label="Full Name" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Sneha Rao" />
+                            <Field label="Age" value={form.age} onChange={e => set('age', e.target.value)} type="number" placeholder="34" />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Gender *</label>
@@ -66,10 +71,10 @@ function AddPatientModal({ doctors, onClose, onSuccess }) {
                                 <option>Male</option><option>Female</option><option>Other</option>
                             </select>
                         </div>
-                        <F label="Email Address" k="email" type="email" placeholder="sneha@example.com" />
-                        <F label="Phone" k="phone" placeholder="+91 98xxx xxxxx" required={false} />
-                        <F label="Condition / Reason for Visit" k="condition" placeholder="Post Knee Replacement" />
-                        <F label="Date of Admission" k="admissionDate" type="date" />
+                        <Field label="Email Address" value={form.email} onChange={e => set('email', e.target.value)} type="email" placeholder="sneha@example.com" />
+                        <Field label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+91 98xxx xxxxx" required={false} />
+                        <Field label="Condition / Reason for Visit" value={form.condition} onChange={e => set('condition', e.target.value)} placeholder="Post Knee Replacement" />
+                        <Field label="Date of Admission" value={form.admissionDate} onChange={e => set('admissionDate', e.target.value)} type="date" />
                         <div className="form-group">
                             <label className="form-label">Risk Level *</label>
                             <select className="form-input" value={form.riskLevel} onChange={e => set('riskLevel', e.target.value)}>
@@ -109,12 +114,13 @@ function AddPatientModal({ doctors, onClose, onSuccess }) {
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
 function CredentialsModal({ patient, onClose }) {
-    return (
+    return createPortal(
         <div className="modal-overlay">
             <div className="modal" style={{ maxWidth: 420 }}>
                 <div className="modal-header"><h3>✅ Patient Registered</h3><button className="modal-close" onClick={onClose}>✕</button></div>
@@ -129,7 +135,8 @@ function CredentialsModal({ patient, onClose }) {
                     <button className="btn btn-accent btn-full" onClick={onClose} style={{ marginTop: '1rem' }}>Got it</button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from './AdminLayout';
 import toast from 'react-hot-toast';
 
+/* ── Field lives at module scope so React never recreates it ── */
+function Field({ label, value, onChange, type = 'text', placeholder = '', required = true }) {
+    return (
+        <div className="form-group">
+            <label className="form-label">{label}{required ? ' *' : ''}</label>
+            <input className="form-input" type={type} placeholder={placeholder}
+                value={value} onChange={onChange} required={required} />
+        </div>
+    );
+}
+
+/* ── Modal rendered via Portal so parent re-renders don't affect it ── */
 function AddDoctorModal({ onClose, onSuccess }) {
     const { adminCreateUser } = useAuth();
     const [form, setForm] = useState({ name: '', email: '', specialization: '', phone: '', password: '', confirm: '' });
@@ -19,13 +32,13 @@ function AddDoctorModal({ onClose, onSuccess }) {
         if (form.password.length < 6) { toast.error('Password must be at least 6 characters.'); return; }
         setSaving(true);
         try {
-            const { uid } = await adminCreateUser(form.email, form.password, {
+            await adminCreateUser(form.email, form.password, {
                 name: form.name, role: 'doctor',
                 specialization: form.specialization, phone: form.phone,
                 hospital: 'Apollo Hospitals',
             });
             toast.success(`Dr. ${form.name} registered!`);
-            onSuccess({ uid, ...form });
+            onSuccess({ ...form });
         } catch (err) {
             toast.error(err.message || 'Failed to register doctor.');
         } finally {
@@ -33,15 +46,7 @@ function AddDoctorModal({ onClose, onSuccess }) {
         }
     }
 
-    const Field = ({ label, k, type = 'text', placeholder = '' }) => (
-        <div className="form-group">
-            <label className="form-label">{label}</label>
-            <input className="form-input" type={type} placeholder={placeholder}
-                value={form[k]} onChange={e => set(k, e.target.value)} required={k !== 'phone'} />
-        </div>
-    );
-
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
             <div className="modal" style={{ maxWidth: 480 }}>
                 <div className="modal-header">
@@ -49,11 +54,11 @@ function AddDoctorModal({ onClose, onSuccess }) {
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
                 <div className="modal-body">
-                    <form onSubmit={handleSubmit}>
-                        <Field label="Full Name *" k="name" placeholder="Dr. Arjun Mehta" />
-                        <Field label="Email Address *" k="email" type="email" placeholder="arjun@hospital.com" />
-                        <Field label="Specialization *" k="specialization" placeholder="Orthopedics" />
-                        <Field label="Phone (optional)" k="phone" placeholder="+91 98xxx xxxxx" />
+                    <form onSubmit={handleSubmit} autoComplete="off">
+                        <Field label="Full Name" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Dr. Arjun Mehta" />
+                        <Field label="Email Address" value={form.email} onChange={e => set('email', e.target.value)} type="email" placeholder="arjun@hospital.com" />
+                        <Field label="Specialization" value={form.specialization} onChange={e => set('specialization', e.target.value)} placeholder="Orthopedics" />
+                        <Field label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+91 98xxx xxxxx" required={false} />
                         <div className="form-group">
                             <label className="form-label">Password *</label>
                             <div style={{ position: 'relative' }}>
@@ -77,12 +82,13 @@ function AddDoctorModal({ onClose, onSuccess }) {
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
 function CredentialsModal({ doctor, onClose }) {
-    return (
+    return createPortal(
         <div className="modal-overlay">
             <div className="modal" style={{ maxWidth: 420 }}>
                 <div className="modal-header">
@@ -100,7 +106,8 @@ function CredentialsModal({ doctor, onClose }) {
                     <button className="btn btn-accent btn-full" onClick={onClose} style={{ marginTop: '1rem' }}>Got it</button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
