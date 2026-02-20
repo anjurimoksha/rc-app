@@ -7,14 +7,17 @@ import Login from './pages/Login';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
+import SelectDoctor from './pages/patient/SelectDoctor';
 import LogSymptoms from './pages/patient/LogSymptoms';
-import PatientChat from './pages/patient/PatientChat';
 import PatientMedHistory from './pages/patient/MedicalHistory';
 import PatientTrends from './pages/patient/Trends';
 
 // Doctor Pages
 import DoctorPatients from './pages/doctor/DoctorPatients';
 import DoctorPatientDetail from './pages/doctor/DoctorPatientDetail';
+
+// Shared
+import Footer from './components/Footer';
 
 function PrivateRoute({ children, requiredRole }) {
   const { currentUser, userRole } = useAuth();
@@ -23,6 +26,15 @@ function PrivateRoute({ children, requiredRole }) {
     return <Navigate to={userRole === 'patient' ? '/patient/dashboard' : '/doctor/patients'} replace />;
   }
   return children;
+}
+
+function PatientLayout({ children }) {
+  return (
+    <div className="patient-layout-wrapper">
+      {children}
+      <Footer />
+    </div>
+  );
 }
 
 function AppRoutes() {
@@ -40,11 +52,11 @@ function AppRoutes() {
       />
 
       {/* Patient Routes */}
-      <Route path="/patient/dashboard" element={<PrivateRoute requiredRole="patient"><PatientDashboard /></PrivateRoute>} />
-      <Route path="/patient/log" element={<PrivateRoute requiredRole="patient"><LogSymptoms /></PrivateRoute>} />
-      <Route path="/patient/chat" element={<PrivateRoute requiredRole="patient"><PatientChat /></PrivateRoute>} />
-      <Route path="/patient/history" element={<PrivateRoute requiredRole="patient"><PatientMedHistory /></PrivateRoute>} />
-      <Route path="/patient/trends" element={<PrivateRoute requiredRole="patient"><PatientTrends /></PrivateRoute>} />
+      <Route path="/patient/dashboard" element={<PrivateRoute requiredRole="patient"><PatientLayout><PatientDashboard /></PatientLayout></PrivateRoute>} />
+      <Route path="/patient/log" element={<PrivateRoute requiredRole="patient"><PatientLayout><SelectDoctor /></PatientLayout></PrivateRoute>} />
+      <Route path="/patient/log/:doctorId" element={<PrivateRoute requiredRole="patient"><PatientLayout><LogSymptoms /></PatientLayout></PrivateRoute>} />
+      <Route path="/patient/history" element={<PrivateRoute requiredRole="patient"><PatientLayout><PatientMedHistory /></PatientLayout></PrivateRoute>} />
+      <Route path="/patient/trends" element={<PrivateRoute requiredRole="patient"><PatientLayout><PatientTrends /></PatientLayout></PrivateRoute>} />
 
       {/* Doctor Routes */}
       <Route path="/doctor/patients" element={<PrivateRoute requiredRole="doctor"><DoctorPatients /></PrivateRoute>} />

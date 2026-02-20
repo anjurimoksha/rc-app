@@ -4,6 +4,8 @@ import { collection, query, getDocs, onSnapshot, where } from 'firebase/firestor
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
+import AddPatientModal from '../../components/AddPatientModal';
+import PrescriptionModal from '../../components/PrescriptionModal';
 
 export default function DoctorPatients() {
     const { currentUser } = useAuth();
@@ -12,8 +14,10 @@ export default function DoctorPatients() {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
-    // unread messages per patient
     const [unreadMap, setUnreadMap] = useState({});
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [prescriptionFor, setPrescriptionFor] = useState(null); // { id, name }
+    const [aiAlertMap, setAiAlertMap] = useState({}); // patientId -> urgencyLevel
 
     useEffect(() => {
         if (!currentUser) return;
@@ -25,7 +29,6 @@ export default function DoctorPatients() {
             setPatients(list);
             setLoading(false);
 
-            // Subscribe to unread messages for each patient
             list.forEach(pat => {
                 const chatId = `${pat.id}_${currentUser.uid}`;
                 const msgQ = query(
@@ -41,6 +44,30 @@ export default function DoctorPatients() {
         return unsub;
     }, [currentUser]);
 
+    // Subscribe to unread AI summaries to display badge on patient cards
+    useEffect(() => {
+        if (!currentUser) return;
+        const q = query(
+            collection(db, 'aiSummaries'),
+            where('doctorId', '==', currentUser.uid),
+            where('read', '==', false)
+        );
+        return onSnapshot(q, snap => {
+            const map = {};
+            snap.docs.forEach(d => { const data = d.data(); map[data.patientId] = data.urgencyLevel || 'Soon'; });
+            setAiAlertMap(map);
+        });
+    }, [currentUser]);
+
+    function handlePatientCreated(patient) {
+        if (patient?.openPrescription) {
+            // Close add modal, open prescription modal for the new patient
+            setShowAddModal(false);
+            setPrescriptionFor({ id: patient.id, name: patient.name });
+            patient.onClose?.();
+        }
+    }
+
     const riskColors = { critical: '#e53e3e', high: '#dd6b20', medium: '#d69e2e', low: '#38a169' };
     const filtered = patients.filter(p => {
         const matchFilter = filter === 'all' || p.risk === filter;
@@ -55,9 +82,18 @@ export default function DoctorPatients() {
         <>
             <Navbar portalType="doctor" />
             <div className="page">
-                <div className="page-header">
-                    <h1>My Patients</h1>
-                    <p>{patients.length} active patients · sorted by risk level{patients.filter(p => p.risk === 'critical').length > 0 ? ` · ${patients.filter(p => p.risk === 'critical').length} critical` : ''}</p>
+                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                    <div>
+                        <h1>My Patients</h1>
+                        <p>{patients.length} active patients · sorted by risk level{patients.filter(p => p.risk === 'critical').length > 0 ? ` · ${patients.filter(p => p.risk === 'critical').length} critical` : ''}</p>
+                    </div>
+                    <button
+                        className="btn btn-accent"
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.9rem', padding: '10px 20px' }}
+                        onClick={() => setShowAddModal(true)}
+                    >
+                        <span style={{ fontSize: '1.1rem', fontWeight: 900 }}>+</span> Add Patient
+                    </button>
                 </div>
 
                 {/* Search + Filter */}
@@ -73,8 +109,7 @@ export default function DoctorPatients() {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {['all', 'critical', 'high', 'medium', 'low'].map(f => (
                             <button
-                                key={f}
-                                onClick={() => setFilter(f)}
+                                key={f} onClick={() => setFilter(f)}
                                 style={{
                                     padding: '6px 14px', borderRadius: 99, fontSize: '0.78rem', fontWeight: 600,
                                     cursor: 'pointer', border: '1.5px solid',
@@ -108,15 +143,17 @@ export default function DoctorPatients() {
                                 className={`patient-card risk-${p.risk}`}
                                 onClick={() => { sessionStorage.setItem('rc_sel_patient', JSON.stringify(p)); navigate(`/doctor/patient/${p.id}`); }}
                             >
-                                {/* Avatar */}
                                 <div className={`pat-avatar av-${p.risk}`}>{p.initials || p.name?.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
-
-                                {/* Details */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                                         <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>{p.name}</span>
                                         <span className={`badge rb-${p.risk}`}>{p.risk?.toUpperCase()}</span>
                                         {p.flagged && <span className="badge badge-danger alert-flash">🚩 ALERT</span>}
+                                        {aiAlertMap[p.id] && (
+                                            <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 99, padding: '2px 10px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: 0.5 }}>
+                                                ⚡ AI {aiAlertMap[p.id]}
+                                            </span>
+                                        )}
                                     </div>
                                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 5 }}>{p.diagnosis}</div>
                                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -125,14 +162,19 @@ export default function DoctorPatients() {
                                         <span>Pain: <strong style={{ color: maxPain >= 8 ? 'var(--danger)' : maxPain >= 5 ? '#dd6b20' : 'var(--success)' }}>{maxPain}/10</strong></span>
                                     </div>
                                 </div>
-
-                                {/* Actions */}
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                                     {unread > 0 && (
                                         <div style={{ background: '#e0f2fe', color: '#0277bd', borderRadius: 'var(--radius-sm)', padding: '4px 10px', fontSize: '0.72rem', fontWeight: 700 }}>
                                             💬 {unread} MSG
                                         </div>
                                     )}
+                                    <button
+                                        className="btn btn-sm btn-outline"
+                                        style={{ fontSize: '0.72rem' }}
+                                        onClick={e => { e.stopPropagation(); setPrescriptionFor({ id: p.id, name: p.name }); }}
+                                    >
+                                        📷 Rx
+                                    </button>
                                     <span style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--accent)' }}>View →</span>
                                 </div>
                             </div>
@@ -140,6 +182,21 @@ export default function DoctorPatients() {
                     })}
                 </div>
             </div>
+
+            {showAddModal && (
+                <AddPatientModal
+                    onClose={() => setShowAddModal(false)}
+                    onPatientCreated={handlePatientCreated}
+                />
+            )}
+
+            {prescriptionFor && (
+                <PrescriptionModal
+                    patientId={prescriptionFor.id}
+                    patientName={prescriptionFor.name}
+                    onClose={() => setPrescriptionFor(null)}
+                />
+            )}
         </>
     );
 }

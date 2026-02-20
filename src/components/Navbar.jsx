@@ -64,7 +64,7 @@ export default function Navbar({ portalType = 'patient', patientName = null }) {
 
     return (
         <nav className="navbar">
-            {/* LEFT */}
+            {/* LEFT — App name & logo */}
             <div className="navbar-left">
                 <div className="navbar-logo" onClick={() => navigate(logoRoute)}>
                     <div className="navbar-logo-icon">🩺</div>
@@ -73,34 +73,43 @@ export default function Navbar({ portalType = 'patient', patientName = null }) {
                         <span>{portalType === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}</span>
                     </div>
                 </div>
-                {patientName && (
-                    <div
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8, fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'var(--card)' }}
-                        onClick={() => navigate('/doctor/patients')}
-                    >
-                        ← My Patients
-                    </div>
-                )}
             </div>
 
-            {/* CENTER */}
+            {/* CENTER — Hospital name + logo */}
             <div className="navbar-center">
                 <div className="hospital-badge">🏥 Apollo Hospitals</div>
             </div>
 
-            {/* RIGHT */}
-            <div className="navbar-right" ref={dropdownRef} style={{ position: 'relative' }}>
+            {/* RIGHT — Log button + Bell + Profile */}
+            <div className="navbar-right" ref={dropdownRef} style={{ position: 'relative', gap: 12 }}>
+                {/* Log button — only for patients */}
+                {portalType === 'patient' && (
+                    <button
+                        className="btn btn-accent btn-sm"
+                        onClick={() => navigate('/patient/log')}
+                        style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        📝 Log
+                    </button>
+                )}
+
+                {/* Notification bell */}
                 <div className="bell-btn" onClick={() => setShowNotif(v => !v)}>
                     🔔
                     {unread > 0 && <div className="bell-dot">{unread > 9 ? '9+' : unread}</div>}
                 </div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                    {userData?.name || currentUser?.email}
+
+                {/* Name */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    {userData?.name?.split(' ')[0] || currentUser?.email}
                 </div>
+
+                {/* Avatar — click to logout */}
                 <div className="avatar-circle" title="Logout" onClick={() => { logout(); navigate('/'); }}>
                     {(userData?.name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('')}
                 </div>
 
+                {/* Notification dropdown */}
                 {showNotif && (
                     <div className="notif-dropdown" style={{ right: 0 }}>
                         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
