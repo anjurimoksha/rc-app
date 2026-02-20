@@ -158,13 +158,6 @@ export default function DoctorPatients() {
                                             💬 {unread} MSG
                                         </div>
                                     )}
-                                    <button
-                                        className="btn btn-sm btn-outline"
-                                        style={{ fontSize: '0.72rem' }}
-                                        onClick={e => { e.stopPropagation(); setPrescriptionFor({ id: p.id, name: p.name }); }}
-                                    >
-                                        📷 Rx
-                                    </button>
                                     <span style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--accent)' }}>View →</span>
                                 </div>
                             </div>
@@ -174,13 +167,6 @@ export default function DoctorPatients() {
             </div>
 
 
-            {prescriptionFor && (
-                <PrescriptionModal
-                    patientId={prescriptionFor.id}
-                    patientName={prescriptionFor.name}
-                    onClose={() => setPrescriptionFor(null)}
-                />
-            )}
         </>
     );
 }
