@@ -4,7 +4,6 @@ import { collection, query, getDocs, onSnapshot, where } from 'firebase/firestor
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
-import PrescriptionModal from '../../components/PrescriptionModal';
 
 export default function DoctorPatients() {
     const { currentUser } = useAuth();
@@ -14,7 +13,6 @@ export default function DoctorPatients() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [unreadMap, setUnreadMap] = useState({});
-    const [prescriptionFor, setPrescriptionFor] = useState(null); // { id, name }
     const [aiAlertMap, setAiAlertMap] = useState({}); // patientId -> urgencyLevel
 
     useEffect(() => {
