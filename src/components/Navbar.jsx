@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -48,9 +48,28 @@ export default function Navbar({ portalType = 'patient', patientName = null }) {
         return `${Math.floor(diff / 1440)}d ago`;
     }
 
+    /* ── Delete a single notification ── */
+    async function deleteNotif(id) {
+        try {
+            await deleteDoc(doc(db, 'notifications', currentUser.uid, 'items', id));
+        } catch (e) { console.error('Delete notif failed', e); }
+    }
+
+    /* ── Delete all notifications (clear all = mark all read = delete) ── */
+    async function deleteAll() {
+        try {
+            const batch = writeBatch(db);
+            notifications.forEach(n => {
+                batch.delete(doc(db, 'notifications', currentUser.uid, 'items', n.id));
+            });
+            await batch.commit();
+        } catch (e) { console.error('Delete all failed', e); }
+    }
+
     const notifColors = {
         critical_alert: '#e53e3e',
         doctor_response: '#0D7A7A',
+        ai_alert: '#6d28d9',
         new_message: '#1A3C6E',
         log_submitted: '#38a169',
     };
@@ -58,6 +77,7 @@ export default function Navbar({ portalType = 'patient', patientName = null }) {
     const notifIcons = {
         critical_alert: '🚨',
         doctor_response: '🩺',
+        ai_alert: '⚡',
         new_message: '💬',
         log_submitted: '📋',
     };
@@ -113,20 +133,40 @@ export default function Navbar({ portalType = 'patient', patientName = null }) {
                 {showNotif && (
                     <div className="notif-dropdown" style={{ right: 0 }}>
                         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary)' }}>🔔 Notifications {unread > 0 && <span className="badge badge-danger">{unread}</span>}</span>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary)' }}>
+                                🔔 Notifications {unread > 0 && <span className="badge badge-danger">{unread}</span>}
+                            </span>
+                            {notifications.length > 0 && (
+                                <button
+                                    onClick={deleteAll}
+                                    style={{ fontSize: '0.72rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    🗑 Clear all
+                                </button>
+                            )}
                         </div>
                         {notifications.length === 0 && (
                             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No notifications yet</div>
                         )}
                         {notifications.map(n => (
-                            <div key={n.id} className={`notif-item ${!n.read ? 'unread' : ''}`}>
-                                <div className="notif-avatar" style={{ background: notifColors[n.type] || '#718096' }}>
-                                    {notifIcons[n.type] || '📣'}
+                            <div key={n.id} className={`notif-item ${!n.read ? 'unread' : ''}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
+                                <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    <div className="notif-avatar" style={{ background: notifColors[n.type] || '#718096' }}>
+                                        {notifIcons[n.type] || '📣'}
+                                    </div>
+                                    <div className="notif-body">
+                                        <p><strong>{n.patientName || n.title}</strong> — {n.message}</p>
+                                        <time>{formatTime(n.timestamp)}</time>
+                                    </div>
                                 </div>
-                                <div className="notif-body">
-                                    <p><strong>{n.patientName || n.title}</strong> — {n.message}</p>
-                                    <time>{formatTime(n.timestamp)}</time>
-                                </div>
+                                {/* ✕ dismiss button — deletes the notification */}
+                                <button
+                                    onClick={() => deleteNotif(n.id)}
+                                    title="Dismiss"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2px 6px', flexShrink: 0, lineHeight: 1 }}
+                                >
+                                    ✕
+                                </button>
                             </div>
                         ))}
                     </div>

@@ -22,10 +22,20 @@ export default function PatientMedHistory() {
                     where('patientId', '==', currentUser.uid)
                 );
                 const snap = await getDocs(q);
-                const data = snap.docs
+                const raw = snap.docs
                     .map(d => ({ id: d.id, ...d.data() }))
                     .sort((a, b) => (b.visitDate > a.visitDate ? 1 : -1));
-                console.log('Medical visits found:', data.length, 'for UID:', currentUser.uid);
+
+                // Deduplicate: keep first occurrence of each visitDate+diagnosis+hospital combo
+                const seen = new Set();
+                const data = raw.filter(v => {
+                    const key = `${v.visitDate}||${v.diagnosis}||${v.hospital}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+
+                console.log('Medical visits found:', data.length, '(after dedup) for UID:', currentUser.uid);
                 setVisits(data);
             } catch (err) {
                 console.error('Failed to fetch medical visits:', err);

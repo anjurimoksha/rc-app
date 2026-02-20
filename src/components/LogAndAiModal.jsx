@@ -90,7 +90,7 @@ export default function LogAndAiModal({ patient, patientId, logs, aiSummaries, c
             await addDoc(collection(db, 'notifications', patientId, 'items'), {
                 type: 'doctor_response',
                 title: '🩺 Doctor Response',
-                message: `Dr. ${userData?.name || ''} responded to your symptom log.`,
+                message: `Dr. ${userData?.name || ''}: "${txt.length > 120 ? txt.slice(0, 117) + '…' : txt}"`,
                 doctorId: currentUser.uid, logId: log.id,
                 timestamp: serverTimestamp(), read: false,
             });
