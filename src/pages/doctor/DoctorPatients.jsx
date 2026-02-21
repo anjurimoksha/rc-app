@@ -178,7 +178,7 @@ export default function DoctorPatients() {
                     <div>
                         <h1>My Patients</h1>
                         <p>
-                            {sortedPatients.length} active patient{sortedPatients.length !== 1 ? 's' : ''} · sorted by AI priority
+                            {sortedPatients.length} active patient{sortedPatients.length !== 1 ? 's' : ''}
                             {sortedPatients.filter(p => (p.risk || p.riskLevel) === 'critical').length > 0
                                 ? ` · ${sortedPatients.filter(p => (p.risk || p.riskLevel) === 'critical').length} critical` : ''}
                         </p>
