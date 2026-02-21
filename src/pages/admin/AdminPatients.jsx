@@ -133,9 +133,7 @@ function PrescriptionModal({ patientId, patientName, assignedDoctorId, doctors, 
 
                     <div style={{ display: 'flex', gap: 12, marginBottom: '1.2rem' }}>
                         <button type="button" className="btn btn-outline" style={{ flex: 1 }}
-                            onClick={() => { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); }}>📁 Upload Image</button>
-                        <button type="button" className="btn btn-outline" style={{ flex: 1 }}
-                            onClick={() => { fileInputRef.current.setAttribute('capture', 'environment'); fileInputRef.current.click(); }}>📷 Take Photo</button>
+                            onClick={() => { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); }}>📁 Upload Prescription Image</button>
                         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
                     </div>
                     {imagePreview && (

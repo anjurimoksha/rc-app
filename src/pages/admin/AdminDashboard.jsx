@@ -4,23 +4,21 @@ import { db } from '../../firebase';
 import AdminLayout from './AdminLayout';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({ doctors: 0, patients: 0, unassigned: 0, alerts: 0 });
+    const [stats, setStats] = useState({ doctors: 0, patients: 0, unassigned: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchStats() {
             try {
-                const [doctorsSnap, patientsSnap, unassignedSnap, alertsSnap] = await Promise.all([
+                const [doctorsSnap, patientsSnap, unassignedSnap] = await Promise.all([
                     getDocs(query(collection(db, 'users'), where('role', '==', 'doctor'))),
                     getDocs(query(collection(db, 'users'), where('role', '==', 'patient'))),
                     getDocs(query(collection(db, 'patients'), where('assignedDoctorId', '==', null))),
-                    getDocs(query(collection(db, 'patients'), where('flagged', '==', true))),
                 ]);
                 setStats({
                     doctors: doctorsSnap.size,
                     patients: patientsSnap.size,
                     unassigned: unassignedSnap.size,
-                    alerts: alertsSnap.size,
                 });
             } catch (e) {
                 console.error('Stats fetch failed:', e);
@@ -35,7 +33,6 @@ export default function AdminDashboard() {
         { label: 'Total Doctors', value: stats.doctors, icon: '👨‍⚕️', color: 'var(--primary)' },
         { label: 'Total Patients', value: stats.patients, icon: '🏥', color: 'var(--accent)' },
         { label: 'Unassigned Patients', value: stats.unassigned, icon: '⚠️', color: '#d69e2e' },
-        { label: 'Active Alerts', value: stats.alerts, icon: '🚨', color: 'var(--danger)' },
     ];
 
     return (

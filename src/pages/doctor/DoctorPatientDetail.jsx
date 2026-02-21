@@ -7,7 +7,6 @@ import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
 import ChatWindow from '../../components/ChatWindow';
-import PrescriptionModal from '../../components/PrescriptionModal';
 import LogAndAiModal from '../../components/LogAndAiModal';
 import jsPDF from 'jspdf';
 import {
@@ -37,7 +36,7 @@ export default function DoctorPatientDetail() {
     const [editMode, setEditMode] = useState(false);
     const [editedVisit, setEditedVisit] = useState(null);
     const [savingEdit, setSavingEdit] = useState(false);
-    const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+
     // AI Summaries
     const [aiSummaries, setAiSummaries] = useState([]);
     const [showAiCard, setShowAiCard] = useState(true);
@@ -362,16 +361,7 @@ export default function DoctorPatientDetail() {
                             </div>
                         </div>
 
-                        {/* Add Prescription */}
-                        <div className="card"
-                            style={{ padding: '1.1rem 1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, border: '1.5px solid var(--accent)', background: 'var(--accent-pale)' }}
-                            onClick={() => setShowPrescriptionModal(true)}>
-                            <div style={{ fontSize: '1.5rem', width: 44, height: 44, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📷</div>
-                            <div>
-                                <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.92rem' }}>Add Prescription</div>
-                                <div style={{ fontSize: '0.77rem', color: 'var(--text-muted)' }}>Upload photo · OCR extraction</div>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
 
@@ -620,13 +610,7 @@ export default function DoctorPatientDetail() {
                     onClose={() => setShowLogModal(false)}
                 />
             )}
-            {showPrescriptionModal && (
-                <PrescriptionModal
-                    patientId={patientId}
-                    patientName={patient?.name}
-                    onClose={() => setShowPrescriptionModal(false)}
-                />
-            )}
+
             {/* Back to Top */}
             {showBackTop && (
                 <button
