@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
 /**
@@ -14,16 +14,17 @@ export async function checkConsecutiveSymptomsAndSummarize({
     patientId, doctorId, patientInfo, currentLog, latestMedications
 }) {
     try {
-        // 1. Fetch last 10 logs ordered by submittedAt desc
+        // 1. Fetch all logs for this patient, sort client-side (no composite index needed)
         const q = query(
             collection(db, 'symptomLogs'),
-            where('patientId', '==', patientId),
-            orderBy('submittedAt', 'desc'),
-            limit(10)
+            where('patientId', '==', patientId)
         );
         const snap = await getDocs(q);
-        // Index 0 = most recent (the just-submitted log), 1 = previous, etc.
-        const recentLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Sort newest first, take last 10
+        const recentLogs = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.submittedAt?.toMillis?.() ?? 0) - (a.submittedAt?.toMillis?.() ?? 0))
+            .slice(0, 10);
 
         if (recentLogs.length === 0) return;
 

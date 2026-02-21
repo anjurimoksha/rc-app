@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, getDoc, doc, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
@@ -106,9 +106,14 @@ export default function LogSymptoms() {
                 // Grab latest medications from most recent medicalVisit
                 let latestMeds = [];
                 try {
-                    const medQ = query(collection(db, 'medicalVisits'), where('patientId', '==', currentUser.uid), orderBy('visitDate', 'desc'), limit(1));
+                    const medQ = query(collection(db, 'medicalVisits'), where('patientId', '==', currentUser.uid));
                     const medSnap = await getDocs(medQ);
-                    if (!medSnap.empty) latestMeds = medSnap.docs[0].data().medications || [];
+                    if (!medSnap.empty) {
+                        const sorted = medSnap.docs
+                            .map(d => d.data())
+                            .sort((a, b) => (b.visitDate > a.visitDate ? 1 : -1));
+                        latestMeds = sorted[0]?.medications || [];
+                    }
                 } catch (_) { }
                 checkConsecutiveSymptomsAndSummarize({
                     patientId: currentUser.uid,
