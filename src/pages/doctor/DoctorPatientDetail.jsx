@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, getDocs, updateDoc
+    collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, getDocs, updateDoc
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -48,27 +48,39 @@ export default function DoctorPatientDetail() {
     const chatId = patient ? `${patient.id}_${currentUser?.uid}` : null;
 
     // Real-time symptom logs for this patient
+    // NOTE: No orderBy here — where+orderBy requires a composite Firestore index.
+    // We sort client-side instead so it works without any index configuration.
     useEffect(() => {
         if (!patientId) return;
         const q = query(
             collection(db, 'symptomLogs'),
-            where('patientId', '==', patientId),
-            orderBy('submittedAt', 'desc')
+            where('patientId', '==', patientId)
         );
         return onSnapshot(q, snap => {
-            const newLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const newLogs = snap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => {
+                    const ta = a.submittedAt?.toMillis?.() ?? 0;
+                    const tb = b.submittedAt?.toMillis?.() ?? 0;
+                    return tb - ta; // newest first
+                });
             setLogs(newLogs);
             // Auto-open modal for new flagged log
             const flagged = newLogs.find(l => l.flagged && !selectedLog);
             if (flagged && activeView === 'log') setSelectedLog(flagged);
-        });
+        }, err => console.error('symptomLogs listener error:', err));
     }, [patientId]);
 
-    // Medical visits
+    // Medical visits (no orderBy — sort client-side)
     useEffect(() => {
         if (!patientId) return;
         getDocs(query(collection(db, 'medicalVisits'), where('patientId', '==', patientId)))
-            .then(snap => setVisits(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+            .then(snap => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+                setVisits(list);
+            })
+            .catch(err => console.error('medicalVisits fetch error:', err));
     }, [patientId]);
 
     async function sendResponse() {
