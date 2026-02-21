@@ -40,10 +40,19 @@ function PageLoader() {
 
 function PrivateRoute({ children, requiredRole }) {
   const { currentUser, userRole } = useAuth();
+
+  // Not logged in → go to login
   if (!currentUser) return <Navigate to="/" replace />;
+
+  // Logged in but role not yet resolved (Firestore fetch in flight or error)
+  // Show a spinner instead of redirecting — avoids the redirect loop
+  if (!userRole || userRole === 'incomplete') return <PageLoader />;
+
+  // Wrong role → send them to their own home
   if (requiredRole && userRole !== requiredRole) {
     return <Navigate to={ROLE_HOME[userRole] || '/'} replace />;
   }
+
   return children;
 }
 
@@ -65,9 +74,11 @@ function AppRoutes() {
         <Route
           path="/"
           element={
-            currentUser
-              ? <Navigate to={ROLE_HOME[userRole] || '/patient/dashboard'} replace />
-              : <Login />
+            !currentUser
+              ? <Login />
+              : !userRole || userRole === 'incomplete'
+                ? <PageLoader />   // role not known yet — wait, don't loop
+                : <Navigate to={ROLE_HOME[userRole]} replace />
           }
         />
 
